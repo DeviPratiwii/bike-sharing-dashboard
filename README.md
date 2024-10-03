@@ -24,7 +24,7 @@ Repository ini mencakup proyek analisis data yang saya lakukan. Tujuan dari dibu
 ```
 https://bike-sharing-dashboard-devipratiwi.streamlit.app/
 ```
-## Prasyarat
+## Requirements
 Sebelum memulai, pastikan untuk memiliki:
 - python==3.11.9
 - babel==2.16.0
@@ -33,11 +33,12 @@ Sebelum memulai, pastikan untuk memiliki:
 - pandas==2.2.2
 - seaborn==0.13.2
 - streamlit==1.39.0
-## Instalasi
-1. **Clone repositori ini:**
+## Instalation
+1. **Download repositori ini:**
    ```
-https://github.com/DeviPratiwii/bike-sharing-dashboard.git
+   https://github.com/DeviPratiwii/bike-sharing-dashboard.git
    ```
+2. **Pastikan lingkungan Python telah terkonfigurasi dengan benar dan pustaka yang diperlukan telah diinstal.**
 ## Run steamlit app
 ```
 streamlit run dashboard.py
