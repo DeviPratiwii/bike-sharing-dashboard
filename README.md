@@ -36,7 +36,7 @@ Sebelum memulai, pastikan untuk memiliki:
 ## Instalasi
 1. **Clone repositori ini:**
    ```
-   git clone
+   git@github.com:DeviPratiwii/bike-sharing-dashboard.git
    ```
 ## Run steamlit app
 ```
