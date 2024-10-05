@@ -1,61 +1,114 @@
 import pandas as pd
-import streamlit as st
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
 
-df = pd.read_csv("main_data.csv")
-df['dteday'] = pd.to_datetime(df['dteday'])
-df['day_type'] = df['holiday'].apply(lambda x: 'Holiday' if x == 1 else 'Working Day')
+# Mengatur tema visualisasi Seaborn
+sns.set_theme(style="whitegrid")
 
-sns.set(style="whitegrid")
-st.title("Bike Sharing Dashboard 🚴")
-st.markdown("### Welcome to the Bike Sharing Dashboard! Discover fascinating insights into bike rental trends through the following visualizations.")
+# Membaca data yang sudah bersih
+main_df = pd.read_csv("main_data.csv")
 
-st.subheader("Proporsi Penyewaan Sepeda Berdasarkan Jenis Hari")
-rentals_by_day_type = df.groupby('day_type').agg({'count': 'sum'}).reset_index()
+# Menambahkan logo atau gambar ke sidebar
+st.sidebar.image("dashboard/bike-sharing.png", use_column_width=True)
 
-fig1, ax1 = plt.subplots(figsize=(8, 8))
-ax1.pie(rentals_by_day_type['count'], labels=rentals_by_day_type['day_type'], 
-        autopct='%1.1f%%', startangle=140, colors=['#1E90FF', '#FFA500'])
-st.pyplot(fig1)
+# Sidebar untuk filter rentang waktu
+st.sidebar.header("Filter Rentang Waktu")
+start_date = st.sidebar.date_input("Pilih Tanggal Mulai", pd.to_datetime(main_df['dteday'].min()))
+end_date = st.sidebar.date_input("Pilih Tanggal Akhir", pd.to_datetime(main_df['dteday'].max()))
 
-st.markdown("### Data Penyewaan Berdasarkan Jenis Hari")
-st.dataframe(rentals_by_day_type)
+# Memfilter data berdasarkan rentang tanggal yang dipilih pengguna
+filtered_df = main_df[(main_df['dteday'] >= str(start_date)) & (main_df['dteday'] <= str(end_date))]
 
-st.subheader("Distribusi Penyewaan Sepeda Berdasarkan Kondisi Cuaca")
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    x='weather_situation',
-    y='count',
-    data=df,
-    ax=ax2,
-    palette='Blues_d'
-)
-ax2.set_xlabel('Kondisi Cuaca', fontsize=12)
-ax2.set_ylabel('Jumlah Pengguna Sepeda', fontsize=12)
-st.pyplot(fig2)
+# Judul Dashboard
+st.title("🚴‍♂️ Bike Sharing Dashboard 🚴‍♀️")
+st.write("""Selamat datang di **Bike Sharing Dashboard**! Temukan wawasan menarik tentang tren penyewaan sepeda melalui visualisasi yang menarik di bawah ini.""")
 
-st.markdown("### Data Penyewaan Berdasarkan Kondisi Cuaca")
-weather_rentals = df.groupby('weather_situation').agg({'count': 'sum'}).reset_index()
+# 1. Visualisasi Tren Bulanan Penggunaan Sepeda dari Tahun ke Tahun
+st.header("📅 Tren Bulanan Penggunaan Sepeda dari Tahun ke Tahun")
+monthly_trend = filtered_df.groupby(['year', 'month'], observed=True)['count'].sum().reset_index()
+
+# Mengubah kolom year menjadi integer untuk menghindari tanda koma
+monthly_trend['year'] = monthly_trend['year'].astype(int)
+
+# Mengatur urutan bulan
+month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+monthly_trend['month'] = pd.Categorical(monthly_trend['month'], categories=month_order, ordered=True)
+
+# Membuat visualisasi
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=monthly_trend, x='month', y='count', hue='year', marker='o', palette=['#FF6347', '#4682B4', '#32CD32'])
+plt.grid(True, which='both', axis='both', linestyle='--', linewidth=0.7)
+plt.title('Tren Bulanan Penggunaan Sepeda dari Tahun ke Tahun', fontsize=16)
+plt.xlabel('Bulan', fontsize=14)
+plt.ylabel('Total Penyewaan Sepeda', fontsize=14)
+plt.xticks(rotation=45)
+plt.legend(title='Tahun')
+st.pyplot(plt)
+
+# Menampilkan tabel hasil
+st.subheader("Tabel Tren Bulanan")
+st.dataframe(monthly_trend)
+
+# 2. Visualisasi Pengaruh Cuaca Terhadap Penggunaan Sepeda
+st.header("🌤️ Pengaruh Cuaca Terhadap Penggunaan Sepeda")
+weather_rentals = filtered_df.groupby('weather_situation', observed=True)['count'].agg(['sum', 'mean']).reset_index()
+
+# Visualisasi pengaruh cuaca terhadap penggunaan sepeda
+plt.figure(figsize=(10, 6))
+sns.barplot(data=weather_rentals, x='weather_situation', y='sum', hue='weather_situation', palette='viridis', legend=False)
+plt.title('Pengaruh Cuaca Terhadap Penggunaan Sepeda')
+plt.xlabel('Cuaca')
+plt.ylabel('Total Penyewaan Sepeda')
+plt.xticks(rotation=45)
+plt.grid(axis='y')
+st.pyplot(plt)
+
+# Menampilkan tabel hasil
+st.subheader("Tabel Pengaruh Cuaca")
 st.dataframe(weather_rentals)
 
-st.subheader("Tren Penggunaan Sepeda Bulanan (2012)")
-df_2012 = df[df['dteday'].dt.year == 2012]
-monthly_rentals = df_2012.groupby(df_2012['dteday'].dt.month)['count'].sum().reset_index()
-monthly_rentals.columns = ['month', 'total_count']
+# Pastikan kolom 'weekday' adalah kategori
+if filtered_df['weekday'].dtype != 'category':
+    filtered_df['weekday'] = filtered_df['weekday'].astype('category')
 
-month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-monthly_rentals['month'] = monthly_rentals['month'].apply(lambda x: month_names[x - 1])
+# 3. Visualisasi Rata-rata Penyewaan Sepeda pada Hari Kerja dan Akhir Pekan
+st.header("📊 Rata-rata Penyewaan Sepeda pada Hari Kerja dan Akhir Pekan")
+filtered_df['day_type'] = filtered_df['weekday'].cat.codes.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+day_type_rentals = filtered_df.groupby('day_type')['count'].agg(['mean']).reset_index()
 
-fig3, ax3 = plt.subplots(figsize=(10, 6))
-sns.lineplot(data=monthly_rentals, x='month', y='total_count', marker='o', ax=ax3, color='blue')
-ax3.set_xlabel('Bulan', fontsize=12)
-ax3.set_ylabel('Total Penyewaan Sepeda', fontsize=12)
-plt.xticks(rotation=45)
-st.pyplot(fig3)
+# Visualisasi rata-rata penyewaan sepeda berdasarkan jenis hari
+plt.figure(figsize=(10, 6))
+sns.barplot(data=day_type_rentals, x='day_type', y='mean', hue='day_type', palette='Set2', legend=False)
+plt.title('Rata-rata Penyewaan Sepeda pada Hari Kerja dan Akhir Pekan')
+plt.xlabel('Jenis Hari')
+plt.ylabel('Rata-rata Penyewaan Sepeda')
+plt.xticks(rotation=0)
+st.pyplot(plt)
 
-st.markdown("### Data Penyewaan Bulanan")
-st.dataframe(monthly_rentals)
+# Menampilkan tabel hasil
+st.subheader("Tabel Rata-rata Penyewaan per Jenis Hari")
+st.dataframe(day_type_rentals)
 
-st.markdown("### Sumber Data")
-st.write("Data ini diambil dari Bike Sharing Dataset.")
+# 4. Visualisasi Proporsi Penyewaan Sepeda berdasarkan Tipe Pengguna
+st.header("👥 Proporsi Penyewaan Sepeda berdasarkan Tipe Pengguna")
+user_type_counts = filtered_df[['casual', 'registered']].sum()
+
+# Membuat pie chart berbentuk donat dengan persentase yang lebih rapi
+plt.figure(figsize=(8, 8))
+plt.pie(user_type_counts, labels=['Casual', 'Registered'], 
+        autopct=lambda p: '{:.1f}%'.format(p) if p > 0 else '',  
+        colors=['#66b3ff', '#ff9999'], startangle=90, 
+        wedgeprops={'width': 0.4}, textprops={'fontsize': 12})  
+plt.title('Proporsi Penyewaan Sepeda berdasarkan Tipe Pengguna')
+plt.axis('equal')  
+st.pyplot(plt)
+
+# Menampilkan tabel hasil
+st.subheader("Tabel Proporsi Penyewaan berdasarkan Tipe Pengguna")
+st.dataframe(user_type_counts.reset_index(name='Total'))
+
+# Pesan Penutup
+st.sidebar.markdown("### 🌟 Terima kasih telah menjelajahi Bike Sharing Dashboard! ")
+st.sidebar.write("Ayo, terus eksplorasi dengan memilih rentang tanggal yang berbeda di sidebar")
+st.caption('Copyright © Ni Wayan Devi Pratiwi 2024')
